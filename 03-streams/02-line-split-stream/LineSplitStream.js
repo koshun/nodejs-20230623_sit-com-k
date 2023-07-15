@@ -5,31 +5,33 @@ class LineSplitStream extends stream.Transform {
   constructor(options) {
     super(options);
 
-    this.spareChuncks = '';
+    this.remainder = '';
   }
 
   _transform(chunk, encoding, callback) {
-    const chunkString = chunk.toString();
+    const str = this.remainder + chunk.toString();
 
-    if (!chunkString.includes(os.EOL)) {
-      this.spareChuncks += chunkString;
-    } else {
-      const chunkArray = chunkString.split(os.EOL);
-      chunkArray[0] = this.spareChuncks + chunkArray[0];
-      this.spareChuncks = '';
-      for (let i = 0; i < chunkArray.length - 1; i++) {
-        this.push(chunkArray[i]);
+    let line = '';
+    for (const character of str.split('')) {
+      if (character === os.EOL) {
+        this.push(line);
+        line = '';
+        continue;
       }
-      this.spareChuncks = chunkArray.pop();
+
+      line += character;
     }
+    this.remainder = line;
 
     callback();
   }
 
   _flush(callback) {
-    this.push(this.spareChuncks);
+    if (this.remainder) {
+      this.push(this.remainder);
+    }
+
     callback();
   }
 }
-
 module.exports = LineSplitStream;
